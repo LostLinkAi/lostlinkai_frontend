@@ -11,7 +11,7 @@ if (typeof window !== 'undefined') {
     console.error('[GLOBAL ERROR in Browser]:', event.error || event.message)
   })
 }
-
+//try again
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
