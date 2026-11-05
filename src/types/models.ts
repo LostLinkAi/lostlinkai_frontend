@@ -1,14 +1,18 @@
 export type ReportType = 'lost' | 'found'
-export type ItemCategory = 'Electronics' | 'Bags' | 'Documents' | 'Keys' | 'Clothing' | 'Accessories' | 'Pets' | 'Vehicles' | 'Other'
-export type ItemStatus = 'open' | 'matched' | 'resolved' | 'archived'
+export type ItemCategory = 'Electronics' | 'Bags' | 'Documents' | 'Keys' | 'Clothing' | 'Accessories' | 'Pets' | 'Vehicles' | 'Other' | string
+export type ItemStatus = 'open' | 'matched' | 'resolved' | 'archived' | 'active' | 'withdrawn' | 'under_review'
 
 export interface User {
   id: string
   displayName: string
+  name?: string
   email: string
-  avatarUrl: string
-  role: 'member' | 'moderator'
-  createdAt: string
+  avatarUrl?: string
+  phone?: string
+  bio?: string
+  location?: string
+  role: 'member' | 'moderator' | 'user' | 'admin'
+  createdAt?: string
 }
 
 export interface Item {
@@ -42,6 +46,8 @@ export interface PotentialMatch {
   id: string
   lostItemId: string
   foundItemId: string
+  lostTitle?: string
+  foundTitle?: string
   similarityScore: number
   matchingReasons: string[]
   conflictingDetails: string[]
@@ -54,7 +60,11 @@ export interface AppMessage {
   from: string
   to: string
   itemId: string
+  matchId?: string
   text: string
+  senderName?: string
+  receiverName?: string
+  reportTitle?: string
   createdAt: string
   read: boolean
 }
@@ -68,4 +78,15 @@ export interface AppNotification {
   createdAt: string
   read: boolean
   href: string
+}
+
+export interface CategoryItem {
+  id: number
+  name: string
+}
+
+export interface LocationItem {
+  id: number
+  name: string
+  parent_id?: number | null
 }

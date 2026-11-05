@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { AppLayout } from '../components/layout/AppLayout'
 import { AuthLayout } from '../components/auth/AuthLayout'
@@ -5,12 +6,20 @@ import {
   BrowseItemsPage, DashboardPage, HelpCenterPage, HomePage, ItemDetailsPage,
   MatchingPage, MessagesPage, MyItemsPage, NotificationsPage, ProfilePage, ReportItemPage,
 } from '../pages/Pages'
-import { ForgotPasswordPage, LoginPage, SignupPage, VerificationPage } from '../pages/auth/AuthPages'
-import { isDemoSessionActive } from '../services/profileService'
+import { ForgotPasswordPage, LoginPage, ResetPasswordPage, SignupPage, VerificationPage } from '../pages/auth/AuthPages'
+import { fetchProfileFromServer, isDemoSessionActive } from '../services/profileService'
 
 function ProtectedAppRoutes() {
   const location = useLocation()
-  if (!isDemoSessionActive()) {
+  const authenticated = isDemoSessionActive()
+
+  useEffect(() => {
+    if (authenticated) {
+      void fetchProfileFromServer()
+    }
+  }, [authenticated])
+
+  if (!authenticated) {
     const returnTo = `${location.pathname}${location.search}${location.hash}`
     return <Navigate to={`/login?returnTo=${encodeURIComponent(returnTo)}`} replace />
   }
@@ -24,6 +33,7 @@ export function AppRouter() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/verify-email" element={<VerificationPage method="email" />} />
         <Route path="/verify-phone" element={<VerificationPage method="phone" />} />
       </Route>

@@ -36,6 +36,7 @@ function AuthField({ label, name, type = 'text', placeholder, autoComplete, icon
   minLength?: number
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void
   value?: string
+  defaultValue?: string
 }) {
   return (
     <label className="auth-field">
@@ -100,6 +101,10 @@ function handleAuthResult(result: AuthResult, navigate: ReturnType<typeof useNav
     navigate(nextPath, { replace: true })
     return
   }
+  if (result.next === 'login-redirect') {
+    navigate(`/login?registered=true&email=${encodeURIComponent(identifier || result.profile?.email || '')}`, { replace: true })
+    return
+  }
   if (result.next === 'verify-email') navigate(`/verify-email?email=${encodeURIComponent(identifier ?? '')}`)
   else if (result.next === 'verify-phone') navigate(`/verify-phone?phone=${encodeURIComponent(identifier ?? '')}`)
   else if (result.next === 'reset-sent') setNotice({ tone: 'success', text: 'If an account exists, password recovery instructions have been sent.' })
@@ -112,9 +117,16 @@ function useReturnPath(defaultPath = '/dashboard') {
 }
 
 export function LoginPage() {
+  const [params] = useSearchParams()
+  const registered = params.get('registered') === 'true'
+  const initialEmail = params.get('email') || ''
   const [mode, setMode] = useState<'email' | 'phone'>('email')
   const [passwordVisible, setPasswordVisible] = useState(false)
-  const [notice, setNotice] = useState<Notice | null>(null)
+  const [notice, setNotice] = useState<Notice | null>(
+    registered
+      ? { tone: 'success', text: 'Account created successfully! A confirmation email has been sent to your inbox. Please sign in below.' }
+      : null
+  )
   const [busy, setBusy] = useState(false)
   const navigate = useNavigate()
   const nextPath = useReturnPath()
@@ -181,8 +193,8 @@ export function LoginPage() {
           <button type="button" className="auth-google-button" onClick={signInWithGoogle}><GoogleMark /> Continue with Google</button>
           <div className="auth-divider"><span>OR WITH EMAIL</span></div>
           <form className="auth-form" onSubmit={login} noValidate>
-            <div className="auth-demo-note">Demo access only: passwords are not checked or saved. Sign-up profile details are held in memory until this tab reloads.</div>
-            <AuthField label="Email address" name="email" type="email" placeholder="you@example.com" autoComplete="email" icon={<Mail size={15} />} required />
+            <div className="auth-demo-note">Sign in with your LostLink AI account to track your reports and community matches.</div>
+            <AuthField label="Email address" name="email" type="email" placeholder="you@example.com" autoComplete="email" icon={<Mail size={15} />} defaultValue={initialEmail} required />
             <PasswordInput label="Password" name="password" visible={passwordVisible} onToggle={() => setPasswordVisible((value) => !value)} placeholder="Your password" autoComplete="current-password" />
             <div className="auth-form-meta"><span>Keep your details private.</span><Link to="/forgot-password">Forgot password?</Link></div>
             <AuthNotice notice={notice} />
@@ -255,7 +267,7 @@ export function SignupPage() {
     <div className="auth-card auth-card--signup">
       <AuthTitle kicker="JOIN YOUR COMMUNITY" title="Let’s bring things back." description="Create an account to report, follow updates, and make safe connections." />
       <form className="auth-form" onSubmit={signUp} noValidate>
-        <div className="auth-demo-note">Demo mode: your name, email, and optional phone will appear on your Profile for this tab only. Your password is never saved.</div>
+        <div className="auth-demo-note">Create an account to report, follow updates, and connect safely with community members.</div>
         <AuthField label="Your name" name="displayName" placeholder="How should we call you?" autoComplete="name" icon={<Sparkles size={15} />} required />
         <AuthField label="Email address" name="email" type="email" placeholder="you@example.com" autoComplete="email" icon={<Mail size={15} />} required />
         <AuthField label="Phone number" name="phone" type="tel" placeholder="Optional · +1 555 000 0000" autoComplete="tel" icon={<MessageCircle size={15} />} />
@@ -381,6 +393,72 @@ export function VerificationPage({ method }: { method: 'email' | 'phone' }) {
       </form>
       <button type="button" className="auth-resend" onClick={resend}>Resend code</button>
       <p className="auth-switch"><Link to="/login">Return to sign in <ArrowRight size={13} /></Link></p>
+    </div>
+  )
+}
+
+export function ResetPasswordPage() {
+  const [params] = useSearchParams()
+  const initialEmail = params.get('email') || ''
+  const initialToken = params.get('token') || ''
+  const [passwordVisible, setPasswordVisible] = useState(false)
+  const [notice, setNotice] = useState<Notice | null>(null)
+  const [busy, setBusy] = useState(false)
+  const navigate = useNavigate()
+
+  async function resetPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setNotice(null)
+    const values = Object.fromEntries(new FormData(event.currentTarget))
+    const schema = z.object({
+      email: z.string().email('Enter your valid account email address.'),
+      token: z.string().trim().min(1, 'Enter or provide the reset token.'),
+      password: z.string().min(8, 'Use at least 8 characters for your password.'),
+      confirmPassword: z.string(),
+    }).superRefine((data, context) => {
+      if (data.password !== data.confirmPassword) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ['confirmPassword'], message: 'Your passwords do not match.' })
+      }
+    })
+    const parsed = schema.safeParse(values)
+    if (!parsed.success) {
+      setNotice({ tone: 'error', text: parsed.error.issues[0]?.message ?? 'Please check your inputs.' })
+      return
+    }
+
+    setBusy(true)
+    try {
+      const result = await authService.resetPassword({
+        email: parsed.data.email,
+        code: parsed.data.token,
+        newPassword: parsed.data.password,
+      })
+      if (result.ok) {
+        setNotice({ tone: 'success', text: 'Password reset successfully! Redirecting to login…' })
+        setTimeout(() => navigate('/login', { replace: true }), 1500)
+      } else {
+        setNotice({ tone: 'error', text: result.message })
+      }
+    } catch (err: any) {
+      console.error('Password reset failed:', err)
+      setNotice({ tone: 'error', text: 'Failed to reset password. Please try again.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="auth-card">
+      <AuthTitle kicker="NEW CREDENTIALS" title="Create a new password." description="Enter the reset token received in your email and choose a secure new password." />
+      <form className="auth-form auth-form--spaced" onSubmit={resetPassword} noValidate>
+        <AuthField label="Account email" name="email" type="email" placeholder="you@example.com" autoComplete="email" icon={<Mail size={15} />} defaultValue={initialEmail} required />
+        <AuthField label="Reset token" name="token" placeholder="Enter reset token from email" icon={<ShieldCheck size={15} />} defaultValue={initialToken} required />
+        <PasswordInput label="New password" name="password" visible={passwordVisible} onToggle={() => setPasswordVisible((v) => !v)} placeholder="At least 8 characters" autoComplete="new-password" minLength={8} />
+        <PasswordInput label="Confirm new password" name="confirmPassword" visible={passwordVisible} onToggle={() => setPasswordVisible((v) => !v)} placeholder="Re-enter new password" autoComplete="new-password" minLength={8} />
+        <AuthNotice notice={notice} />
+        <button className="auth-submit" type="submit" disabled={busy}>{busy ? 'Updating…' : 'Set new password'} <ArrowRight size={16} /></button>
+      </form>
+      <p className="auth-switch"><Link to="/login">Back to sign in <ArrowRight size={13} /></Link></p>
     </div>
   )
 }
