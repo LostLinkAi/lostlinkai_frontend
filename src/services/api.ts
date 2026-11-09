@@ -1,6 +1,15 @@
 const TOKEN_KEY = 'lostlink_token'
 const USER_KEY = 'lostlink_user'
 
+// Purge any old persistent localStorage authentication so users are automatically logged out when browser/page closes
+if (typeof window !== 'undefined') {
+  try {
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(USER_KEY)
+    localStorage.removeItem('lostlink_session_active')
+  } catch {}
+}
+
 const DEV_API_URL = 'http://localhost:5000/api/v1'
 const PROD_API_URL = 'https://lostlinkai-backend.onrender.com/api/v1'
 
@@ -71,20 +80,23 @@ export class ApiException extends Error {
 }
 
 export function getStoredToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
+  if (typeof window === 'undefined') return null
+  return sessionStorage.getItem(TOKEN_KEY)
 }
 
 export function setStoredToken(token: string | null): void {
+  if (typeof window === 'undefined') return
   if (token) {
-    localStorage.setItem(TOKEN_KEY, token)
+    sessionStorage.setItem(TOKEN_KEY, token)
   } else {
-    localStorage.removeItem(TOKEN_KEY)
+    sessionStorage.removeItem(TOKEN_KEY)
   }
 }
 
 export function getStoredUser<T = unknown>(): T | null {
+  if (typeof window === 'undefined') return null
   try {
-    const raw = localStorage.getItem(USER_KEY)
+    const raw = sessionStorage.getItem(USER_KEY)
     return raw ? (JSON.parse(raw) as T) : null
   } catch {
     return null
@@ -92,16 +104,18 @@ export function getStoredUser<T = unknown>(): T | null {
 }
 
 export function setStoredUser(user: unknown): void {
+  if (typeof window === 'undefined') return
   if (user) {
-    localStorage.setItem(USER_KEY, JSON.stringify(user))
+    sessionStorage.setItem(USER_KEY, JSON.stringify(user))
   } else {
-    localStorage.removeItem(USER_KEY)
+    sessionStorage.removeItem(USER_KEY)
   }
 }
 
 export function clearAuth(): void {
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(USER_KEY)
+  if (typeof window === 'undefined') return
+  sessionStorage.removeItem(TOKEN_KEY)
+  sessionStorage.removeItem(USER_KEY)
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {

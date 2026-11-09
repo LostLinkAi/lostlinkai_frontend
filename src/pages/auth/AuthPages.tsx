@@ -154,11 +154,18 @@ export function LoginPage() {
 
   async function signInWithGoogle() {
     setNotice(null)
+    setBusy(true)
     try {
-      handleAuthResult(await authService.loginWithGoogle(), navigate, nextPath, setNotice)
-    } catch (error) {
+      const redirectUrl = `${window.location.origin}${nextPath.startsWith('/') ? nextPath : `/${nextPath}`}`
+      const result = await authService.loginWithGoogle(redirectUrl)
+      if (!result.ok) {
+        setNotice({ tone: 'error', text: result.message })
+      }
+    } catch (error: any) {
       console.error('Google sign-in service failed.', error)
-      setNotice({ tone: 'error', text: 'Google sign-in could not be completed. Try again later.' })
+      setNotice({ tone: 'error', text: error?.message || 'Google sign-in could not be completed. Try again later.' })
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -261,11 +268,32 @@ export function SignupPage() {
     }
   }
 
+  async function signInWithGoogle() {
+    setNotice(null)
+    setBusy(true)
+    try {
+      const redirectUrl = `${window.location.origin}${nextPath.startsWith('/') ? nextPath : `/${nextPath}`}`
+      const result = await authService.loginWithGoogle(redirectUrl)
+      if (!result.ok) {
+        setNotice({ tone: 'error', text: result.message })
+      }
+    } catch (error: any) {
+      console.error('Google sign-in service failed.', error)
+      setNotice({ tone: 'error', text: error?.message || 'Google sign-in could not be completed.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const passwordScore = [passwordValue.length >= 8, /[A-Z]/.test(passwordValue), /[a-z]/.test(passwordValue), /[0-9]/.test(passwordValue), /[^A-Za-z0-9]/.test(passwordValue)].filter(Boolean).length
 
   return (
     <div className="auth-card auth-card--signup">
       <AuthTitle kicker="JOIN YOUR COMMUNITY" title="Let’s bring things back." description="Create an account to report, follow updates, and make safe connections." />
+      <button type="button" className="auth-google-button" onClick={signInWithGoogle} disabled={busy}>
+        <GoogleMark /> Continue with Google
+      </button>
+      <div className="auth-divider"><span>OR WITH EMAIL</span></div>
       <form className="auth-form" onSubmit={signUp} noValidate>
         <div className="auth-demo-note">Create an account to report, follow updates, and connect safely with community members.</div>
         <AuthField label="Your name" name="displayName" placeholder="How should we call you?" autoComplete="name" icon={<Sparkles size={15} />} required />

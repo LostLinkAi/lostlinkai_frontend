@@ -1,5 +1,6 @@
 import { api, clearAuth, setStoredToken, setStoredUser, ApiException } from './api'
 import { endDemoSession, saveCurrentProfile, setSessionActive, signInToDemoAccount } from './profileService'
+import { supabase } from './supabase'
 
 export interface PasswordCredentials {
   email: string
@@ -21,7 +22,8 @@ export type AuthResult =
 
 export interface AuthService {
   loginWithPassword(credentials: PasswordCredentials): Promise<AuthResult>
-  loginWithGoogle(): Promise<AuthResult>
+  loginWithGoogle(redirectTo?: string): Promise<AuthResult>
+  syncGoogleSession(supabaseUser: any): Promise<AuthResult>
   requestPhoneCode(phone: string): Promise<AuthResult>
   signUp(details: { displayName: string; email: string; phone?: string; password: string }): Promise<AuthResult>
   requestPasswordReset(email: string): Promise<AuthResult>
@@ -98,11 +100,97 @@ export const authService: AuthService = {
     }
   },
 
-  async loginWithGoogle() {
+  async loginWithGoogle(redirectTo?: string) {
+    try {
+      const redirectTarget = redirectTo || `${window.location.origin}/dashboard`
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectTarget,
+        },
+      })
+      if (error) {
+        return {
+          ok: false,
+          reason: 'rejected',
+          message: error.message || 'Google Sign-In failed.',
+        }
+      }
+      return { ok: true, next: 'authenticated' }
+    } catch (err: any) {
+      return {
+        ok: false,
+        reason: 'rejected',
+        message: err.message || 'Could not initiate Google Sign-In.',
+      }
+    }
+  },
+
+  async syncGoogleSession(supabaseUser: any): Promise<AuthResult> {
+    if (!supabaseUser || !supabaseUser.email) {
+      return { ok: false, reason: 'rejected', message: 'No user information found in Google session.' }
+    }
+    try {
+      const email = supabaseUser.email
+      const name = supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || email.split('@')[0]
+      const avatarUrl = supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture || ''
+
+      const response = await api.post<{
+        success: boolean
+        data: {
+          accessToken: string
+          user: {
+            id: number | string
+            name: string
+            email: string
+            role: string
+            phone?: string
+            avatar_url?: string
+          }
+        }
+      }>('/auth/google', {
+        email,
+        name,
+        avatarUrl,
+        supabaseId: supabaseUser.id,
+      })
+
+      if (response.success && response.data) {
+        const { accessToken, user } = response.data
+        setStoredToken(accessToken)
+        setStoredUser(user)
+        setSessionActive(true)
+
+        const profile: AuthProfile = {
+          id: String(user.id),
+          displayName: user.name,
+          email: user.email,
+          phone: user.phone || '',
+          avatarUrl: user.avatar_url || avatarUrl || '',
+          role: user.role,
+        }
+
+        saveCurrentProfile(profile)
+        return { ok: true, next: 'authenticated', mode: 'live', profile }
+      }
+    } catch (err: any) {
+      console.warn('Backend sync for Google user failed, falling back to session:', err.message)
+      const profile: AuthProfile = {
+        id: supabaseUser.id,
+        displayName: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || supabaseUser.email.split('@')[0],
+        email: supabaseUser.email,
+        avatarUrl: supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture || '',
+        phone: supabaseUser.phone || '',
+      }
+      setSessionActive(true)
+      saveCurrentProfile(profile)
+      return { ok: true, next: 'authenticated', mode: 'live', profile }
+    }
+
     return {
       ok: false,
-      reason: 'not-configured',
-      message: 'Google Sign-In is not configured yet. Please sign in with email and password.',
+      reason: 'rejected',
+      message: 'Failed to synchronize Google authentication.',
     }
   },
 
@@ -235,6 +323,11 @@ export const authService: AuthService = {
       await api.post('/auth/logout')
     } catch {
       // Ignore network errors on logout
+    }
+    try {
+      await supabase.auth.signOut()
+    } catch {
+      // Ignore errors signing out of supabase
     } finally {
       clearAuth()
       endDemoSession()

@@ -95,14 +95,16 @@ export async function fetchProfileFromServer(): Promise<AccountProfile> {
 }
 
 export function isDemoSessionActive(): boolean {
-  return !!getStoredToken() || localStorage.getItem('lostlink_session_active') === 'true'
+  if (typeof window === 'undefined') return false
+  return !!getStoredToken() || sessionStorage.getItem('lostlink_session_active') === 'true'
 }
 
 export function setSessionActive(active: boolean): void {
+  if (typeof window === 'undefined') return
   if (active) {
-    localStorage.setItem('lostlink_session_active', 'true')
+    sessionStorage.setItem('lostlink_session_active', 'true')
   } else {
-    localStorage.removeItem('lostlink_session_active')
+    sessionStorage.removeItem('lostlink_session_active')
   }
 }
 
