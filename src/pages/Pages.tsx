@@ -86,7 +86,7 @@ export function HomePage() {
         <div className="hero-art">
           <div className="art-grid" />
           <div className="art-index">FIELD NOTE&nbsp; / &nbsp;001</div>
-          <div className="hero-photo"><img src="/images/lostlink-ai-logo.webp" alt="LostLink AI — Find What Matters logo" /></div>
+          <div className="hero-photo"><img src="/lostlink-ai-logo.webp" alt="LostLink AI — Find What Matters logo" /></div>
           <div className="photo-caption"><span className="caption-dot" /> STORIES FIND THEIR WAY HOME <span>01 — 03</span></div>
           <div className="art-orbit orbit-a" /><div className="art-orbit orbit-b" />
           <div className="match-note"><Sparkles size={15} /><span><b>We will</b><br />Find it.</span><span className="match-percent">100%</span></div>
