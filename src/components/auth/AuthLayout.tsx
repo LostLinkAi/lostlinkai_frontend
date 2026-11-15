@@ -1,7 +1,7 @@
 import { ArrowRight, BrainCircuit, PackageSearch, Search } from 'lucide-react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { BrandIdentity } from '../layout/BrandIdentity'
-import { EclipseScene } from './EclipseScene'
+import { AuthBackground } from './AuthBackground'
 import './auth.css'
 
 export function AuthLayout() {
@@ -21,7 +21,7 @@ export function AuthLayout() {
       </header>
       <div className="auth-body">
         <section className="auth-art" aria-label="LostLink AI welcome">
-          <EclipseScene />
+          <AuthBackground />
           <div className="auth-art-copy">
             <span className="auth-kicker">A LITTLE CLOSER TO FOUND</span>
             <div className="auth-art-features">
