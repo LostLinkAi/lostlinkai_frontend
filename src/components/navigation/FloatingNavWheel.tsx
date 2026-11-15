@@ -1,22 +1,23 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
-  Bell, BrainCircuit, BriefcaseBusiness, CircleAlert, CircleHelp, Compass, LayoutDashboard,
+  Bell, BrainCircuit, BriefcaseBusiness, CircleAlert, CircleHelp, Compass, Home, LayoutDashboard,
   MessageCircle, PackageCheck, Search, UserRound, X,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 const links = [
-  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, color: '#ffb02e' },
-  { label: 'Browse items', to: '/browse', icon: Search, color: '#78dce8' },
-  { label: 'Report lost', to: '/report/lost', icon: CircleAlert, color: '#ffb02e' },
-  { label: 'Report found', to: '/report/found', icon: PackageCheck, color: '#40c99a' },
-  { label: 'AI matching', to: '/matching', icon: BrainCircuit, color: '#b7a2ff' },
-  { label: 'My items', to: '/my-items', icon: BriefcaseBusiness, color: '#78dce8' },
-  { label: 'Messages', to: '/messages', icon: MessageCircle, color: '#40c99a' },
-  { label: 'Notifications', to: '/notifications', icon: Bell, color: '#ffb02e' },
-  { label: 'My profile', to: '/profile', icon: UserRound, color: '#b7a2ff' },
-  { label: 'Help center', to: '/help', icon: CircleHelp, color: '#78dce8' },
+  { label: 'Home', to: '/', icon: Home, color: 'var(--logo-cyan)' },
+  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, color: 'var(--amber)' },
+  { label: 'Browse items', to: '/browse', icon: Search, color: 'var(--logo-blue)' },
+  { label: 'Report lost', to: '/report/lost', icon: CircleAlert, color: 'var(--amber)' },
+  { label: 'Report found', to: '/report/found', icon: PackageCheck, color: 'var(--logo-green)' },
+  { label: 'AI matching', to: '/matching', icon: BrainCircuit, color: 'var(--logo-cyan)' },
+  { label: 'My items', to: '/my-items', icon: BriefcaseBusiness, color: 'var(--logo-blue)' },
+  { label: 'Messages', to: '/messages', icon: MessageCircle, color: 'var(--logo-green)' },
+  { label: 'Notifications', to: '/notifications', icon: Bell, color: 'var(--amber)' },
+  { label: 'My profile', to: '/profile', icon: UserRound, color: 'var(--logo-cyan)' },
+  { label: 'Help center', to: '/help', icon: CircleHelp, color: 'var(--logo-blue)' },
 ]
 
 export function FloatingNavWheel() {
@@ -57,11 +58,12 @@ export function FloatingNavWheel() {
           {open && links.map((item, index) => {
             const Icon = item.icon
             const compactPositions = [
-              [-172, -398], [-78, -398], [-172, -310], [-78, -310], [-172, -222],
-              [-78, -222], [-172, -134], [-78, -134], [-172, -46], [-78, -46],
+              [-172, -398], [-78, -398], [-172, -328], [-78, -328], [-172, -258],
+              [-78, -258], [-172, -188], [-78, -188], [-172, -118], [-78, -118],
+              [-172, -48],
             ]
             const compact = window.innerWidth < 600
-            const angle = (180 + index * 20) * Math.PI / 180
+            const angle = (180 + index * 180 / (links.length - 1)) * Math.PI / 180
             const x = compact ? compactPositions[index][0] : -205 + Math.cos(angle) * 190
             const y = compact ? compactPositions[index][1] : -160 + Math.sin(angle) * 190
             return (

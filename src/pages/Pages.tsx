@@ -1,8 +1,9 @@
 import {
   ArrowDownRight, ArrowLeft, ArrowRight, ArrowUpRight, Check, CheckCircle2, ChevronDown,
-  CircleHelp, Clock3, Eye, FileText, Filter, HeartHandshake, LockKeyhole, MapPin,
-  MessageCircle, Plus, Search, Send, ShieldCheck, Sparkles, Upload, X,
+  CircleHelp, Clock3, Eraser, Eye, FileText, Filter, HeartHandshake, LayoutDashboard, LockKeyhole, LogOut, MapPin, Minus,
+  MessageCircle, PencilLine, Plus, Search, Send, ShieldCheck, Sparkles, Upload, X, type LucideIcon,
 } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Calendar } from '@heroui/react'
 import { getLocalTimeZone, parseDate, today } from '@internationalized/date'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
@@ -22,9 +23,84 @@ import type { AppMessage, AppNotification, Item, ItemCategory, PotentialMatch, R
 
 const defaultCategories: ItemCategory[] = ['Electronics', 'Bags', 'Documents', 'Keys', 'Clothing', 'Accessories', 'Pets', 'Vehicles', 'Other']
 const avatarChoices = ['https://i.pravatar.cc/120?img=12', 'https://i.pravatar.cc/120?img=47', 'https://i.pravatar.cc/120?img=32', 'https://i.pravatar.cc/120?img=5']
+const heroHeadlines = [
+  { lead: 'Lost Something?', accent: 'We’ll help you', ending: 'find it.' },
+  { lead: 'Found a lost item?', accent: 'We’ll reunite it', ending: 'with the owner.' },
+]
 
 function PageIntro({ kicker, title, text }: { kicker: string; title: string; text: string }) {
   return <div className="page-intro"><span className="eyebrow">{kicker}</span><h1>{title}</h1><p>{text}</p></div>
+}
+
+function HeroTypewriter() {
+  const [messageIndex, setMessageIndex] = useState(0)
+  const [visibleCharacters, setVisibleCharacters] = useState(0)
+  const [deleting, setDeleting] = useState(false)
+  const message = heroHeadlines[messageIndex]
+  const totalCharacters = message.lead.length + message.accent.length + message.ending.length
+
+  useEffect(() => {
+    const complete = visibleCharacters === totalCharacters
+    const delay = deleting
+      ? (visibleCharacters === 0 ? 450 : 40)
+      : (complete ? 2250 : 72)
+
+    const timeout = window.setTimeout(() => {
+      if (!deleting) {
+        if (complete) setDeleting(true)
+        else setVisibleCharacters((count) => count + 1)
+      } else if (visibleCharacters > 0) {
+        setVisibleCharacters((count) => count - 1)
+      } else {
+        setMessageIndex((index) => (index + 1) % heroHeadlines.length)
+        setDeleting(false)
+      }
+    }, delay)
+
+    return () => window.clearTimeout(timeout)
+  }, [deleting, messageIndex, totalCharacters, visibleCharacters])
+
+  const leadCharacters = Math.min(visibleCharacters, message.lead.length)
+  const accentCharacters = Math.min(
+    message.accent.length,
+    Math.max(0, visibleCharacters - message.lead.length),
+  )
+  const endingCharacters = Math.max(
+    0,
+    visibleCharacters - message.lead.length - message.accent.length,
+  )
+  const isTyping = !deleting && visibleCharacters < totalCharacters
+  const toolPhase = deleting ? 'erasing' : isTyping ? 'writing' : 'resting'
+  const writingTool = (
+    <span
+      className={`hero-typewriter__tool-wrap hero-typewriter__tool-wrap--${toolPhase}`}
+      aria-hidden="true"
+    >
+      {deleting
+        ? <Eraser className="hero-typewriter__tool" strokeWidth={2.2} />
+        : <PencilLine className="hero-typewriter__tool" strokeWidth={2.2} />}
+    </span>
+  )
+
+  return (
+    <h1 aria-label={`${message.lead} ${message.accent} ${message.ending}`}>
+      <span className="hero-typewriter__reserve" aria-hidden="true">
+        Found a lost item?<br /><em>We’ll reunite it</em><br />with the owner.
+      </span>
+      <span className="hero-typewriter__live" aria-hidden="true">
+        {message.lead.slice(0, leadCharacters)}
+        {visibleCharacters <= message.lead.length && writingTool}
+        <br />
+        <em>
+          {message.accent.slice(0, accentCharacters)}
+          {visibleCharacters > message.lead.length && visibleCharacters <= message.lead.length + message.accent.length && writingTool}
+        </em>
+        <br />
+        {message.ending.slice(0, endingCharacters)}
+        {visibleCharacters > message.lead.length + message.accent.length && writingTool}
+      </span>
+    </h1>
+  )
 }
 
 function ConcernButton({ itemId }: { itemId?: string }) {
@@ -58,7 +134,14 @@ export function HomePage() {
         <BrandIdentity />
         <div className="home-header-actions">
           {authenticated ? (
-            <Link to="/dashboard" className="home-signin-link">Dashboard <ArrowRight size={14} /></Link>
+            <Link
+              to="/dashboard"
+              className="home-signin-link home-dashboard-link"
+              aria-label="Dashboard"
+              data-tooltip="Dashboard"
+            >
+              <LayoutDashboard size={19} aria-hidden="true" />
+            </Link>
           ) : (
             <Link to="/login" className="home-signin-link">Sign in</Link>
           )}
@@ -68,7 +151,7 @@ export function HomePage() {
       <section className="hero">
         <div className="hero-copy">
           <div className="eyebrow"><span className="eyebrow-line" /> A little closer to found</div>
-          <h1>Lost something?<br /><em>We’ll help you</em><br />find it.</h1>
+          <HeroTypewriter />
           <p>Good things find their way back. Tell your community what’s missing, or help someone reconnect with what matters.</p>
           <div className="hero-actions">
             <Link to="/report/lost" className="button button-amber">Report an item <ArrowUpRight size={16} /></Link>
@@ -107,7 +190,7 @@ export function HomePage() {
       <section className="home-feature"><div className="feature-visual"><div className="feature-ring"><div className="ring-point point-one" /><div className="ring-point point-two" /><div className="ring-core"><Sparkles size={26} /></div></div><span className="feature-coordinate">DETAILS IN / SIGNAL OUT</span></div><div className="feature-copy"><span className="eyebrow">A second set of eyes</span><h2>Sometimes a match is hiding in the details.</h2><p>Our intelligent matching view brings similar reports together — from category and timing to the small identifying details that matter. Every suggestion is an invitation to look closer, never a verdict.</p><Link to="/matching" className="text-link">Explore matching <ArrowRight size={15} /></Link><div className="feature-disclaimer"><LockKeyhole size={14} /> A match is a lead, not proof. People make the final call.</div></div></section>
       <section className="community-band"><div><ShieldCheck /><span className="eyebrow">Care comes first</span><h2>Helpful by nature.<br /><em>Private by design.</em></h2></div><p>Keep exact addresses and personal contact details private. Share a detail only when you’re ready. A safe return begins with a careful conversation.</p><Link to="/help" className="button button-outline">Our safety guide <ArrowUpRight size={15} /></Link></section>
       <div className="home-preview"><div className="section-heading"><div><span className="eyebrow">From around the neighborhood</span><h2>Recently reported</h2></div><Link to="/browse" className="text-link">See all items <ArrowRight size={15} /></Link></div><div className="item-grid">{items.slice(0, 3).map((item) => <ItemCard key={item.id} item={item} />)}</div></div>
-      <footer className="site-footer"><BrandIdentity /><span>For the things — and people — worth finding.</span><nav><Link to="/help">Help</Link><a href="mailto:hello@findwhatmatters.example">Contact</a><Link to="/help">Privacy</Link><Link to="/help">Terms</Link></nav><small>© 2025 LostLink AI</small></footer>
+      <footer className="site-footer"><BrandIdentity /><span>For the things — and people — worth finding.</span><nav><Link to="/help">Help</Link><a href="mailto:hello@findwhatmatters.example">Contact</a><Link to="/help">Privacy</Link><Link to="/help">Terms</Link></nav><small>© 2026 LostLink AI</small></footer>
     </div>
   )
 }
@@ -208,6 +291,7 @@ export function BrowseItemsPage() {
   const [sort, setSort] = useState('Newest first')
   const [limit, setLimit] = useState(6)
   const [items, setItems] = useState<Item[]>(() => itemService.list())
+  const [isLoadingItems, setIsLoadingItems] = useState(false)
   const [availableCategories, setAvailableCategories] = useState<string[]>(defaultCategories)
   const [availableLocations, setAvailableLocations] = useState<string[]>([])
 
@@ -225,6 +309,8 @@ export function BrowseItemsPage() {
   }, [])
 
   useEffect(() => {
+    let active = true
+    setIsLoadingItems(true)
     void itemService.fetchList({
       type,
       category,
@@ -233,8 +319,13 @@ export function BrowseItemsPage() {
       sort,
       limit: 50,
     }).then((res) => {
-      if (res) setItems(res)
+      if (active) setItems(res)
+    }, (error: unknown) => {
+      if (active) console.error('Failed to load Browse listings.', error)
+    }).finally(() => {
+      if (active) setIsLoadingItems(false)
     })
+    return () => { active = false }
   }, [type, category, location, query, sort])
 
   const filtered = useMemo(() => {
@@ -251,27 +342,30 @@ export function BrowseItemsPage() {
   }, [items, query, type, category, location])
 
   return (
-    <div className="page-shell">
+    <div className="page-shell browse-page">
+      <div className="browse-question-marks" aria-hidden="true">
+        {Array.from({ length: 9 }, (_, index) => <span key={index}>?</span>)}
+      </div>
       <SectionHeading eyebrow="The neighborhood lost & found" title="Browse items" description="A familiar detail can be the beginning of a reunion." action={<Link className="button button-amber" to="/report/lost"><Plus size={16} /> Report an item</Link>} />
       <div className="browse-tools">
         <label className="search-box">
           <Search size={18} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search names, details, places…" />
+          <input aria-label="Search listings" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search names, details, places…" />
           <kbd>⌘ K</kbd>
         </label>
         <div className="tabs">
           {['All items', 'Lost items', 'Found items'].map((tab) => (
-            <button key={tab} onClick={() => setType(tab)} className={type === tab ? 'selected' : ''}>{tab}</button>
+            <button key={tab} type="button" onClick={() => setType(tab)} className={type === tab ? 'selected' : ''} aria-pressed={type === tab}>{tab}</button>
           ))}
         </div>
       </div>
       <div className="filter-row">
         <span><Filter size={14} /> FILTER BY</span>
-        <select value={category} onChange={(event) => setCategory(event.target.value)}>
+        <select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)}>
           <option>All categories</option>
           {availableCategories.map((cat) => <option key={cat}>{cat}</option>)}
         </select>
-        <select value={location} onChange={(event) => setLocation(event.target.value)}>
+        <select aria-label="Filter by location" value={location} onChange={(event) => setLocation(event.target.value)}>
           {availableLocations.length > 0 ? (
             availableLocations.map((place) => <option key={place}>{place}</option>)
           ) : (
@@ -289,11 +383,14 @@ export function BrowseItemsPage() {
           <option>Newest first</option>
           <option>Oldest first</option>
         </select>
-        <span className="results-count">{filtered.length} listings</span>
+        <span className="results-count" role="status" aria-live="polite" aria-busy={isLoadingItems}>
+          {isLoadingItems && <span className="browse-spinner" aria-hidden="true" />}
+          {filtered.length} listings
+        </span>
       </div>
       {filtered.length ? (
         <>
-          <div className="item-grid">{filtered.slice(0, limit).map((item) => <ItemCard key={item.id} item={item} />)}</div>
+          <div className="item-grid" aria-busy={isLoadingItems}>{filtered.slice(0, limit).map((item) => <ItemCard key={item.id} item={item} browseInteractive />)}</div>
           {filtered.length > limit && (
             <button className="button button-outline load-more" onClick={() => setLimit((count) => count + 6)}>
               Load more listings <ArrowDownRight size={16} />
@@ -811,7 +908,12 @@ export function ProfilePage() {
 
   return (
     <div className="page-shell profile-page">
-      <SectionHeading eyebrow="A LITTLE ABOUT YOU" title="Your profile" description="Make your space feel like yours. Your contact details stay private." />
+      <SectionHeading
+        eyebrow="A LITTLE ABOUT YOU"
+        title="Your profile"
+        description="Make your space feel like yours. Your contact details stay private."
+        action={<Link to="/login" className="button button-signout" onClick={endDemoSession}><LogOut size={15} /> Sign out</Link>}
+      />
       <form onSubmit={save}>
         <div className="profile-layout">
           <section className="panel profile-avatar-panel">
@@ -837,7 +939,6 @@ export function ProfilePage() {
           </section>
           <section className="panel profile-fields">
             <span className="eyebrow">ACCOUNT INFORMATION</span>
-            <Link to="/login" className="text-link profile-demo-signout" onClick={endDemoSession}>Sign out <ArrowRight size={13} /></Link>
             <label>Display name<input value={name} onChange={(event) => setName(event.target.value)} required /></label>
             <label>About you<textarea rows={3} placeholder="A little about yourself and community involvement…" value={bio} onChange={(e) => setBio(e.target.value)} /></label>
             <label>General location<input placeholder="e.g. Northside" value={location} onChange={(e) => setLocation(e.target.value)} /></label>
@@ -1004,10 +1105,249 @@ const helpArticles = [
   { category: 'Privacy', title: 'Report something suspicious', text: 'Use the Report a concern button on any item detail page to immediately notify administrators and moderators for review.' },
 ]
 
+type HelpGuideline = { title: string; icon: LucideIcon; points: string[] }
+
+const helpDos: HelpGuideline[] = [
+  {
+    title: 'Provide accurate item descriptions',
+    icon: FileText,
+    points: [
+      'Describe the item clearly.',
+      'Include its colour, brand, type, and distinguishing features.',
+      'Provide useful details that can help identify the item.',
+      'Avoid misleading or exaggerated descriptions.',
+    ],
+  },
+  {
+    title: 'Upload clear photographs',
+    icon: Upload,
+    points: [
+      'Use genuine photographs of the actual item where possible.',
+      'Ensure the image is clear and relevant.',
+      'Avoid heavily edited or misleading images.',
+      'Only upload images you are authorized to share.',
+    ],
+  },
+  {
+    title: 'Provide accurate locations and dates',
+    icon: MapPin,
+    points: [
+      'Specify where the item was lost or found.',
+      'Provide the correct date or approximate time.',
+      'Use location details that help others identify the relevant area.',
+      'Update the report if the information changes.',
+    ],
+  },
+  {
+    title: 'Report found items responsibly',
+    icon: HeartHandshake,
+    points: [
+      'Report discovered property honestly.',
+      'Describe the item’s condition.',
+      'Keep found property safe while arranging an appropriate handover.',
+      'Follow applicable local laws and institutional procedures.',
+    ],
+  },
+  {
+    title: 'Verify ownership before returning an item',
+    icon: ShieldCheck,
+    points: [
+      'Ask the claimant to describe identifying characteristics.',
+      'Request reasonable proof of ownership.',
+      'Confirm distinguishing details that are not publicly disclosed in the listing.',
+      'Use the platform’s available communication and recovery process.',
+    ],
+  },
+  {
+    title: 'Communicate respectfully',
+    icon: MessageCircle,
+    points: [
+      'Be polite when contacting other users.',
+      'Respond to legitimate enquiries.',
+      'Avoid harassment, threats, or unnecessary confrontation.',
+      'Keep communication relevant to recovering the property.',
+    ],
+  },
+  {
+    title: 'Protect your personal information',
+    icon: LockKeyhole,
+    points: [
+      'Share only information necessary for the recovery process.',
+      'Use available system communication channels where possible.',
+      'Arrange safe handovers in appropriate public or supervised locations.',
+    ],
+  },
+  {
+    title: 'Update your reports',
+    icon: CheckCircle2,
+    points: [
+      'Update a report when an item has been recovered.',
+      'Notify the appropriate users or administrators.',
+      'Avoid leaving resolved listings active unnecessarily.',
+      'Provide accurate status updates.',
+    ],
+  },
+]
+
+const helpDonts: HelpGuideline[] = [
+  {
+    title: 'Don’t submit false reports',
+    icon: FileText,
+    points: [
+      'Do not report items you have not actually lost or found.',
+      'Do not fabricate item descriptions or locations.',
+      'Do not create duplicate reports to manipulate visibility.',
+      'Do not submit reports for entertainment or malicious purposes.',
+    ],
+  },
+  {
+    title: 'Don’t claim items that aren’t yours',
+    icon: Eye,
+    points: [
+      'Never falsely claim ownership of another person’s belongings.',
+      'Do not provide fabricated ownership evidence.',
+      'Do not attempt to collect property without proper verification.',
+    ],
+  },
+  {
+    title: 'Don’t expose sensitive identifying information',
+    icon: LockKeyhole,
+    points: [
+      'Do not publish full identification numbers, passwords, bank details, or private documents.',
+      'Avoid exposing serial numbers or unique security identifiers publicly.',
+      'Do not publish private contact details belonging to other people.',
+    ],
+  },
+  {
+    title: 'Don’t upload misleading content',
+    icon: Upload,
+    points: [
+      'Do not upload unrelated photographs.',
+      'Do not use another person’s image without authorization.',
+      'Do not manipulate photographs to misrepresent an item’s condition or identity.',
+    ],
+  },
+  {
+    title: 'Don’t demand money or offer rewards deceptively',
+    icon: HeartHandshake,
+    points: [
+      'Do not use false claims to obtain money.',
+      'Do not demand payment before establishing legitimate ownership and following approved recovery procedures.',
+      'Do not impersonate the owner or a system administrator.',
+    ],
+  },
+  {
+    title: 'Don’t arrange unsafe handovers',
+    icon: MapPin,
+    points: [
+      'Avoid isolated or unfamiliar meeting locations.',
+      'Do not disclose your home address unnecessarily.',
+      'Do not meet suspicious individuals alone.',
+      'Do not put yourself at risk to recover property.',
+    ],
+  },
+  {
+    title: 'Don’t misuse the communication system',
+    icon: MessageCircle,
+    points: [
+      'Do not spam other users.',
+      'Do not send abusive, threatening, or inappropriate messages.',
+      'Do not harass users who cannot respond immediately.',
+      'Do not impersonate other users.',
+    ],
+  },
+  {
+    title: 'Don’t misuse AI matching',
+    icon: Sparkles,
+    points: [
+      'Do not assume that an AI-generated match automatically proves ownership.',
+      'Do not treat similarity scores as definitive verification.',
+      'Always verify item details before arranging recovery.',
+    ],
+  },
+]
+
+const safetyReminders = [
+  'Never share passwords, OTPs, or banking credentials.',
+  'Never pay suspicious individuals claiming to have recovered your property.',
+  'Verify ownership before handing over valuable belongings.',
+  'Arrange handovers in safe, public, or supervised locations.',
+  'Report suspicious activities to the appropriate system administrators.',
+  'Do not attempt to personally confront someone suspected of theft.',
+  'For emergencies or suspected criminal activity, contact the appropriate local authorities.',
+]
+
+const lostReportChecklist = [
+  'Item name and category',
+  'Clear description',
+  'Last known location',
+  'Date and approximate time lost',
+  'Relevant identifying characteristics',
+  'Photograph, if available',
+]
+
+const foundReportChecklist = [
+  'Item name and category',
+  'Where and when it was found',
+  'General item description',
+  'Current condition',
+  'Photograph, where appropriate and safe to share',
+]
+
+const recoverySteps: { title: string; text: string; icon: LucideIcon }[] = [
+  { title: 'Discover', text: 'Search existing lost and found reports.', icon: Search },
+  { title: 'Identify', text: 'Compare descriptions, locations, dates, and item characteristics.', icon: Eye },
+  { title: 'Match', text: 'Review potential AI-generated matches, where available.', icon: Sparkles },
+  { title: 'Verify', text: 'Establish legitimate ownership through distinguishing details.', icon: ShieldCheck },
+  { title: 'Coordinate', text: 'Arrange a safe handover through the available communication process.', icon: MessageCircle },
+  { title: 'Resolve', text: 'Update the report once the item has been successfully recovered.', icon: CheckCircle2 },
+]
+
+function HelpGuidelineCard({
+  guideline,
+  kind,
+  id,
+  expanded,
+  onToggle,
+}: {
+  guideline: HelpGuideline
+  kind: 'do' | 'dont'
+  id: string
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const Icon = guideline.icon
+
+  return (
+    <article className={`guideline-card guideline-card--${kind}`}>
+      <button
+        className="guideline-card__toggle"
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={id}
+        onClick={onToggle}
+      >
+        <span className="guideline-card__icon"><Icon size={17} aria-hidden="true" /></span>
+        <span className="guideline-card__title">{guideline.title}</span>
+        <ChevronDown size={16} aria-hidden="true" />
+      </button>
+      <div className={`guideline-card__expand${expanded ? ' is-open' : ''}`} id={id} aria-hidden={!expanded}>
+        <div className="guideline-card__expand-inner">
+          <ul>
+            {guideline.points.map((point) => <li key={point}>{point}</li>)}
+          </ul>
+        </div>
+      </div>
+    </article>
+  )
+}
+
 export function HelpCenterPage() {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All topics')
   const [expanded, setExpanded] = useState<string | null>(helpArticles[0].title)
+  const [expandedGuideline, setExpandedGuideline] = useState<string | null>(null)
+  const reducedMotion = useReducedMotion()
   const categoriesList = ['All topics', ...new Set(helpArticles.map((article) => article.category))]
   const results = helpArticles.filter((article) => (category === 'All topics' || article.category === category) && `${article.title} ${article.text} ${article.category}`.toLowerCase().includes(query.toLowerCase()))
 
@@ -1015,31 +1355,122 @@ export function HelpCenterPage() {
     <div className="page-shell help-page">
       <PageIntro kicker="HERE WHEN YOU NEED US" title="Help, with a human touch." text="Answers for the small steps that bring the important things back." />
       <label className="help-search">
-        <Search size={18} />
-        <input placeholder="Search articles, topics, questions…" value={query} onChange={(event) => setQuery(event.target.value)} />
-        <kbd>⌘ K</kbd>
+        <Search size={18} aria-hidden="true" />
+        <input aria-label="Search help articles" placeholder="Search articles, topics, questions…" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <kbd aria-hidden="true">⌘ K</kbd>
       </label>
       <div className="help-categories">
         {categoriesList.map((name) => (
-          <button key={name} className={category === name ? 'active' : ''} onClick={() => setCategory(name)}>{name}</button>
+          <button
+            key={name}
+            type="button"
+            className={category === name ? 'active' : ''}
+            aria-pressed={category === name}
+            onClick={() => setCategory(name)}
+          >
+            <span className="help-category-label">{name}</span>
+            {category === name && (
+              <motion.span
+                className="help-category-indicator"
+                layoutId="help-faq-category-indicator"
+                aria-hidden="true"
+                transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 480, damping: 36 }}
+              />
+            )}
+          </button>
         ))}
       </div>
       <div className="help-layout">
         <div className="help-articles">
-          {results.length ? (
-            results.map((article, index) => (
-              <article className="help-article" key={article.title}>
-                <button aria-expanded={expanded === article.title} onClick={() => setExpanded(expanded === article.title ? null : article.title)}>
-                  <span className="article-index">0{index + 1}</span>
-                  <span><small>{article.category}</small><b>{article.title}</b></span>
-                  <ChevronDown size={17} />
-                </button>
-                {expanded === article.title && <p>{article.text}</p>}
-              </article>
-            ))
-          ) : (
-            <div className="empty-state"><h2>No articles found</h2><p>Try another search term or category.</p></div>
-          )}
+          <AnimatePresence initial={false} mode="popLayout">
+            {results.length ? (
+              results.map((article, index) => {
+                const articleIndex = helpArticles.indexOf(article)
+                const questionId = `help-faq-question-${articleIndex}`
+                const answerId = `help-faq-answer-${articleIndex}`
+                const isExpanded = expanded === article.title
+
+                return (
+                  <motion.article
+                    className={`help-article${isExpanded ? ' is-expanded' : ''}`}
+                    key={article.title}
+                    layout="position"
+                    initial={reducedMotion ? false : { opacity: 0, y: 9 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -5 }}
+                    transition={{
+                      duration: reducedMotion ? 0 : 0.24,
+                      delay: reducedMotion ? 0 : Math.min(index * 0.025, 0.15),
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    style={{ transformPerspective: 900 }}
+                    whileHover={reducedMotion ? undefined : { y: -2, rotateX: 0.3 }}
+                  >
+                    <button
+                      className="help-article__trigger"
+                      id={questionId}
+                      type="button"
+                      aria-expanded={isExpanded}
+                      aria-controls={answerId}
+                      onClick={() => setExpanded(isExpanded ? null : article.title)}
+                    >
+                      <span className="article-index">{String(index + 1).padStart(2, '0')}</span>
+                      <span className="faq-question-copy">
+                        <small>{article.category}</small>
+                        <b>{article.title}</b>
+                      </span>
+                      <span className={`faq-question-icon${isExpanded ? ' is-expanded' : ''}`} aria-hidden="true">
+                        <Plus className="faq-icon-plus" size={17} />
+                        <Minus className="faq-icon-minus" size={17} />
+                      </span>
+                    </button>
+                    <motion.div
+                      className="faq-answer"
+                      id={answerId}
+                      role="region"
+                      aria-labelledby={questionId}
+                      aria-hidden={!isExpanded}
+                      initial={false}
+                      animate={{ height: isExpanded ? 'auto' : 0, opacity: isExpanded ? 1 : 0 }}
+                      transition={{
+                        height: { duration: reducedMotion ? 0 : 0.36, ease: [0.22, 1, 0.36, 1] },
+                        opacity: { duration: reducedMotion ? 0 : 0.22, ease: 'easeOut' },
+                      }}
+                    >
+                      <AnimatePresence initial={false}>
+                        {isExpanded && (
+                          <motion.div
+                            className="faq-answer__content"
+                            key="answer-content"
+                            initial={reducedMotion ? false : { opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
+                            transition={{ duration: reducedMotion ? 0 : 0.2, ease: 'easeOut' }}
+                          >
+                            <span className="faq-answer__marker"><CircleHelp size={15} aria-hidden="true" /><span>Helpful information</span></span>
+                            <p>{article.text}</p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  </motion.article>
+                )
+              })
+            ) : (
+              <motion.div
+                className="empty-state help-empty"
+                key="no-help-results"
+                role="status"
+                aria-live="polite"
+                initial={reducedMotion ? false : { opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
+                transition={{ duration: reducedMotion ? 0 : 0.18 }}
+              >
+                <h2>No articles found</h2><p>Try another search term or category.</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         <aside className="support-card">
           <CircleHelp size={22} />
@@ -1050,6 +1481,120 @@ export function HelpCenterPage() {
           <small>Help center · Community support</small>
         </aside>
       </div>
+      <section className="dos-donts-section" aria-labelledby="guidelines-heading">
+        <div className="guidelines-intro">
+          <span className="eyebrow">USE LOSTLINK AI RESPONSIBLY</span>
+          <h2 id="guidelines-heading">Dos &amp; Don’ts of Using LostLink AI</h2>
+          <p>These guidelines help keep item reports trustworthy, communication respectful, and recovery safer for everyone.</p>
+        </div>
+        <div className="dos-donts-grid">
+          <section className="guideline-column guideline-column--do" aria-labelledby="guidelines-do-heading">
+            <div className="guideline-column__heading">
+              <span className="guideline-column__badge"><Check size={15} aria-hidden="true" /></span>
+              <div><h3 id="guidelines-do-heading">Do: Best practices</h3><p>Help the right item find its way home.</p></div>
+            </div>
+            <div className="guideline-column__cards">
+              {helpDos.map((guideline, index) => {
+                const id = `help-do-guideline-${index}`
+                return (
+                  <HelpGuidelineCard
+                    key={guideline.title}
+                    guideline={guideline}
+                    kind="do"
+                    id={id}
+                    expanded={expandedGuideline === id}
+                    onToggle={() => setExpandedGuideline(expandedGuideline === id ? null : id)}
+                  />
+                )
+              })}
+            </div>
+          </section>
+          <section className="guideline-column guideline-column--dont" aria-labelledby="guidelines-dont-heading">
+            <div className="guideline-column__heading">
+              <span className="guideline-column__badge"><X size={15} aria-hidden="true" /></span>
+              <div><h3 id="guidelines-dont-heading">Don’t: Things to avoid</h3><p>Protect yourself and the LostLink community.</p></div>
+            </div>
+            <div className="guideline-column__cards">
+              {helpDonts.map((guideline, index) => {
+                const id = `help-dont-guideline-${index}`
+                return (
+                  <HelpGuidelineCard
+                    key={guideline.title}
+                    guideline={guideline}
+                    kind="dont"
+                    id={id}
+                    expanded={expandedGuideline === id}
+                    onToggle={() => setExpandedGuideline(expandedGuideline === id ? null : id)}
+                  />
+                )
+              })}
+            </div>
+          </section>
+        </div>
+      </section>
+      <section className="safety-panel" aria-labelledby="safety-panel-heading">
+        <div className="safety-panel__header">
+          <span className="safety-panel__icon"><ShieldCheck size={21} aria-hidden="true" /></span>
+          <div>
+            <span className="eyebrow">IMPORTANT SAFETY REMINDER</span>
+            <h2 id="safety-panel-heading">Your safety comes first</h2>
+            <p>LostLink AI helps people connect about lost property, but it does not replace good judgment or local authorities.</p>
+          </div>
+        </div>
+        <ul className="safety-panel__list">
+          {safetyReminders.map((reminder) => (
+            <li key={reminder}><ShieldCheck size={15} aria-hidden="true" /><span>{reminder}</span></li>
+          ))}
+        </ul>
+        <p className="safety-panel__note"><Sparkles size={14} aria-hidden="true" /> AI-generated matches are suggestions only—not proof of ownership. Always verify item details before arranging a handover.</p>
+      </section>
+      <section className="reporting-guide" aria-labelledby="reporting-guide-heading">
+        <div className="reporting-guide__intro">
+          <span className="eyebrow">A CLEAR REPORT HELPS</span>
+          <h2 id="reporting-guide-heading">Before you submit a report</h2>
+          <p>Include useful details while keeping private information out of public descriptions.</p>
+        </div>
+        <div className="reporting-checklists">
+          <section className="reporting-checklist" aria-labelledby="lost-checklist-heading">
+            <div className="reporting-checklist__heading">
+              <span><FileText size={17} aria-hidden="true" /></span>
+              <h3 id="lost-checklist-heading">Reporting a lost item</h3>
+            </div>
+            <ul>
+              {lostReportChecklist.map((item) => <li key={item}><Check size={14} aria-hidden="true" />{item}</li>)}
+            </ul>
+          </section>
+          <section className="reporting-checklist" aria-labelledby="found-checklist-heading">
+            <div className="reporting-checklist__heading">
+              <span><HeartHandshake size={17} aria-hidden="true" /></span>
+              <h3 id="found-checklist-heading">Reporting a found item</h3>
+            </div>
+            <ul>
+              {foundReportChecklist.map((item) => <li key={item}><Check size={14} aria-hidden="true" />{item}</li>)}
+            </ul>
+          </section>
+        </div>
+        <p className="reporting-guide__privacy"><LockKeyhole size={15} aria-hidden="true" /> Keep one or two distinctive details private so a claimant can verify ownership. Never include passwords, full identification numbers, banking details, or another person’s private information in a public report.</p>
+      </section>
+      <section className="recovery-process" aria-labelledby="recovery-process-heading">
+        <div className="reporting-guide__intro">
+          <span className="eyebrow">FROM SEARCH TO SAFE RETURN</span>
+          <h2 id="recovery-process-heading">The responsible recovery process</h2>
+          <p>Follow these steps to move from a possible match to a well-coordinated resolution.</p>
+        </div>
+        <ol className="recovery-steps">
+          {recoverySteps.map(({ title, text, icon: Icon }, index) => (
+            <li className="recovery-step" key={title}>
+              <div className="recovery-step__top">
+                <span className="recovery-step__number">{String(index + 1).padStart(2, '0')}</span>
+                <Icon size={18} aria-hidden="true" />
+              </div>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
       <div className="help-footnote"><ShieldCheck size={15} /> For a safe return, always verify ownership in private and meet in a public place.</div>
     </div>
   )

@@ -95,7 +95,7 @@ export function AppRouter() {
         justifyContent: 'center',
         background: '#080d1a',
         color: '#f8fafc',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        fontFamily: '"Times New Roman", Times, serif'
       }}>
         <div style={{
           width: '42px',
