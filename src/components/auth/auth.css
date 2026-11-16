@@ -385,7 +385,37 @@
   .auth-background .eclipse-scene { inset: -78% -29% -88% -26%; }
   .auth-background--video-ready .auth-background__video { opacity: .58; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .auth-background__video { display: none; }
-  .auth-background--video-ready .eclipse-scene { opacity: 1; }
+.auth-background__motion-toggle {
+  position: absolute;
+  z-index: 3;
+  right: 16px;
+  bottom: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 176, 46, .55);
+  border-radius: 999px;
+  color: #f5f3ed;
+  background: rgba(3, 17, 31, .82);
+  font: 600 10px var(--display);
+  cursor: pointer;
+  pointer-events: auto;
+  backdrop-filter: blur(8px);
+}
+.auth-background__motion-toggle:hover {
+  border-color: #ffb02e;
+  background: rgba(255, 176, 46, .14);
+}
+.auth-background__motion-toggle:focus-visible {
+  outline: 2px solid #ffb02e;
+  outline-offset: 3px;
+}
+@media (max-width: 620px) {
+  .auth-background__motion-toggle {
+    right: 10px;
+    bottom: 10px;
+    padding: 8px 10px;
+    font-size: 9px;
+  }
 }
