@@ -2,19 +2,19 @@ import { useEffect, useState } from 'react'
 import { EclipseScene } from './EclipseScene'
 
 /**
- * Cinematic auth background with an explicit opt-in when reduced motion
- * is enabled, preserving the visitor's accessibility preference by default.
+ * Cinematic auth background. Respect reduced-motion by default, while
+ * keeping a visible, explicit control for visitors who want the video.
  */
 export function AuthBackground() {
   const [videoReady, setVideoReady] = useState(false)
   const [videoFailed, setVideoFailed] = useState(false)
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
-  const [motionEnabled, setMotionEnabled] = useState(false)
+  const [motionEnabled, setMotionEnabled] = useState(
+    () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
     const updateMotionPreference = () => {
-      setPrefersReducedMotion(mediaQuery.matches)
       setMotionEnabled(!mediaQuery.matches)
       setVideoReady(false)
     }
@@ -53,7 +53,7 @@ export function AuthBackground() {
           </video>
         )}
       </div>
-      {prefersReducedMotion && !motionEnabled && (
+      {!motionEnabled && !videoFailed && (
         <button
           className="auth-background__motion-toggle"
           type="button"
