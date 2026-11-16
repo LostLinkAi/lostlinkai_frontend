@@ -27,6 +27,8 @@ export function AuthBackground() {
   const videoReady = readySource === videoSrc
 
   useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+
     const mobileQuery = window.matchMedia(MOBILE_QUERY)
     const motionQuery = window.matchMedia(REDUCED_MOTION_QUERY)
 
@@ -66,6 +68,7 @@ export function AuthBackground() {
           playsInline
           preload="metadata"
           tabIndex={-1}
+          onLoadStart={() => setReadySource(null)}
           onCanPlay={() => setReadySource(videoSrc)}
           onError={() => {
             setReadySource(null)
