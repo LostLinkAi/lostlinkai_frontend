@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { authService, type AuthResult } from '../../services/authService'
-import { saveCurrentProfile } from '../../services/profileService'
+import { setActiveProfile } from '../../services/profileService'
 
 type Notice = { tone: 'error' | 'info' | 'success'; text: string }
 
@@ -88,11 +88,7 @@ function handleAuthResult(result: AuthResult, navigate: ReturnType<typeof useNav
     return
   }
   if (result.profile) {
-    saveCurrentProfile({
-      displayName: result.profile.displayName,
-      email: result.profile.email,
-      phone: result.profile.phone ?? '',
-    })
+    setActiveProfile(result.profile)
   }
   if (result.next === 'authenticated') {
     if (result.mode === 'demo') {

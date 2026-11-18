@@ -1,5 +1,5 @@
 import { api, clearAuth, setStoredToken, setStoredUser, ApiException } from './api'
-import { endDemoSession, saveCurrentProfile, setSessionActive, signInToDemoAccount } from './profileService'
+import { endDemoSession, setActiveProfile, setSessionActive, signInToDemoAccount } from './profileService'
 import { supabase } from './supabase'
 
 export interface PasswordCredentials {
@@ -13,6 +13,8 @@ export interface AuthProfile {
   email: string
   phone?: string
   avatarUrl?: string
+  bio?: string
+  location?: string
   role?: string
 }
 
@@ -67,10 +69,12 @@ export const authService: AuthService = {
           email: user.email,
           phone: user.phone || '',
           avatarUrl: user.avatar_url || '',
+          bio: (user as any).bio || '',
+          location: (user as any).location || '',
           role: user.role,
         }
 
-        saveCurrentProfile(profile)
+        setActiveProfile(profile)
         return { ok: true, next: 'authenticated', mode: 'live', profile }
       }
     } catch (err: any) {
@@ -167,10 +171,12 @@ export const authService: AuthService = {
           email: user.email,
           phone: user.phone || '',
           avatarUrl: user.avatar_url || avatarUrl || '',
+          bio: (user as any).bio || '',
+          location: (user as any).location || '',
           role: user.role,
         }
 
-        saveCurrentProfile(profile)
+        setActiveProfile(profile)
         return { ok: true, next: 'authenticated', mode: 'live', profile }
       }
     } catch (err: any) {
@@ -181,9 +187,11 @@ export const authService: AuthService = {
         email: supabaseUser.email,
         avatarUrl: supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture || '',
         phone: supabaseUser.phone || '',
+        bio: '',
+        location: '',
       }
       setSessionActive(true)
-      saveCurrentProfile(profile)
+      setActiveProfile(profile)
       return { ok: true, next: 'authenticated', mode: 'live', profile }
     }
 
@@ -219,6 +227,7 @@ export const authService: AuthService = {
       }>('/auth/register', {
         name: details.displayName.trim(),
         email: details.email.trim(),
+        phone: details.phone ? details.phone.trim() : undefined,
         password: details.password,
       })
 

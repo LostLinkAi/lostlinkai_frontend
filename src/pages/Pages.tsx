@@ -17,8 +17,8 @@ import { itemService } from '../services/itemService'
 import { messageService } from '../services/messageService'
 import { matchingService } from '../services/matchingService'
 import { notificationService } from '../services/notificationService'
-import { endDemoSession, fetchProfileFromServer, getCurrentProfile, isDemoSessionActive, saveCurrentProfile } from '../services/profileService'
-import { api } from '../services/api'
+import { endDemoSession, fetchProfileFromServer, getCurrentProfile, isDemoSessionActive, saveCurrentProfile, uploadUserAvatar } from '../services/profileService'
+import { api, resolveApiUrl } from '../services/api'
 import type { AppMessage, AppNotification, Item, ItemCategory, PotentialMatch, ReportType } from '../types/models'
 
 const defaultCategories: ItemCategory[] = ['Electronics', 'Bags', 'Documents', 'Keys', 'Clothing', 'Accessories', 'Pets', 'Vehicles', 'Other']
@@ -228,8 +228,8 @@ export function DashboardPage() {
   return (
     <div className="page-shell dashboard-page">
       <div className="welcome-row">
-        <div className="avatar-large"><img src={profile.avatarUrl || demoUser.avatarUrl} alt={profile.displayName} /></div>
-        <div><span className="eyebrow">LOSTLINK AI DASHBOARD</span><h1>Good day, {profile.displayName.split(' ')[0]}<span className="amber">.</span></h1><p>Here’s what’s happening around your reports and community matches.</p></div>
+        <div className="avatar-large"><img src={resolveApiUrl(profile.avatarUrl || '') || demoUser.avatarUrl} alt={profile.displayName || 'User'} /></div>
+        <div><span className="eyebrow">LOSTLINK AI DASHBOARD</span><h1>Good day, {(profile.displayName || 'Neighbor').split(' ')[0]}<span className="amber">.</span></h1><p>Here’s what’s happening around your reports and community matches.</p></div>
         <span className="demo-pill"><i /> LIVE</span>
       </div>
       <div className="metric-grid">
@@ -863,47 +863,64 @@ export function MatchingPage() {
 
 export function ProfilePage() {
   const [profile, setProfile] = useState(getCurrentProfile())
-  const [avatar, setAvatar] = useState(() => localStorage.getItem('fwm-avatar') || profile.avatarUrl || demoUser.avatarUrl)
+  const [avatar, setAvatar] = useState(profile.avatarUrl || '')
   const [name, setName] = useState(profile.displayName)
   const [email, setEmail] = useState(profile.email)
-  const [phone, setPhone] = useState(profile.phone)
+  const [phone, setPhone] = useState(profile.phone || '')
   const [bio, setBio] = useState(profile.bio || '')
   const [location, setLocation] = useState(profile.location || '')
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const [preview, setPreview] = useState('')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
 
   useEffect(() => {
     void fetchProfileFromServer().then((p) => {
       setProfile(p)
-      setName(p.displayName)
-      setEmail(p.email)
-      setPhone(p.phone)
-      if (p.avatarUrl) setAvatar(p.avatarUrl)
-      if (p.bio) setBio(p.bio)
-      if (p.location) setLocation(p.location)
+      setName(p.displayName || '')
+      setEmail(p.email || '')
+      setPhone(p.phone || '')
+      setAvatar(p.avatarUrl || '')
+      setBio(p.bio || '')
+      setLocation(p.location || '')
     })
   }, [])
 
   async function save(event: FormEvent) {
     event.preventDefault()
     setSaving(true)
-    const activeAvatar = preview || avatar || ''
-    localStorage.setItem('fwm-avatar', activeAvatar)
-    localStorage.setItem('fwm-display-name', name)
+    setError('')
+    setSaved(false)
 
-    saveCurrentProfile({
-      displayName: name,
-      email,
-      phone,
-      avatarUrl: activeAvatar,
-      bio,
-      location,
-    })
+    try {
+      let activeAvatar = avatar
 
-    setSaved(true)
-    setSaving(false)
-    window.setTimeout(() => setSaved(false), 2500)
+      if (avatarFile) {
+        activeAvatar = await uploadUserAvatar(avatarFile)
+        setAvatar(activeAvatar)
+        setAvatarFile(null)
+        setPreview('')
+      }
+
+      const updated = await saveCurrentProfile({
+        displayName: name,
+        email,
+        phone,
+        avatarUrl: activeAvatar,
+        bio,
+        location,
+      })
+
+      setProfile(updated)
+      setSaved(true)
+      window.setTimeout(() => setSaved(false), 3000)
+    } catch (err: any) {
+      console.error('Failed to save profile:', err)
+      setError(err?.message || 'Failed to save profile to database. Please check your connection and try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -918,10 +935,10 @@ export function ProfilePage() {
         <div className="profile-layout">
           <section className="panel profile-avatar-panel">
             <span className="eyebrow">YOUR AVATAR</span>
-            <img className="profile-avatar" src={preview || avatar} alt="Profile avatar preview" />
+            <img className="profile-avatar" src={preview || resolveApiUrl(avatar) || demoUser.avatarUrl} alt="Profile avatar preview" />
             <div className="avatar-choices">
               {avatarChoices.map((choice) => (
-                <button type="button" key={choice} className={avatar === choice ? 'selected' : ''} onClick={() => { setAvatar(choice); setPreview('') }}>
+                <button type="button" key={choice} className={avatar === choice && !preview ? 'selected' : ''} onClick={() => { setAvatar(choice); setAvatarFile(null); setPreview('') }}>
                   <img src={choice} alt="Choose avatar" />
                 </button>
               ))}
@@ -931,11 +948,12 @@ export function ProfilePage() {
                 const file = event.target.files?.[0]
                 if (file) {
                   if (file.size > 5 * 1024 * 1024) { window.alert('Choose an image under 5 MB.'); return }
+                  setAvatarFile(file)
                   setPreview(URL.createObjectURL(file))
                 }
               }} />
             </label>
-            {preview && <button type="button" className="text-link" onClick={() => setPreview('')}>Remove photo preview <X size={13} /></button>}
+            {preview && <button type="button" className="text-link" onClick={() => { setAvatarFile(null); setPreview('') }}>Remove photo preview <X size={13} /></button>}
           </section>
           <section className="panel profile-fields">
             <span className="eyebrow">ACCOUNT INFORMATION</span>
@@ -953,6 +971,7 @@ export function ProfilePage() {
               <LockKeyhole size={17} />
               <p>Your profile and contact preferences are stored securely on your LostLink AI account.</p>
             </div>
+            {error && <p className="error-inline" style={{ color: '#ef4444', fontSize: '13px', margin: '8px 0' }}>{error}</p>}
             {saved && <p className="success-inline"><Check size={14} /> Profile preferences saved.</p>}
             <button className="button button-amber" type="submit" disabled={saving}>
               {saving ? 'Saving…' : 'Save profile'} <Check size={15} />
